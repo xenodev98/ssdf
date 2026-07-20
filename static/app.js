@@ -8,6 +8,7 @@
   const API = '';
 
   // Identifiant visiteur : généré une fois, conservé dans le navigateur.
+  // Devient l'identifiant de session Google une fois connecté (voir setupGoogleAuth).
   function getVisitorId() {
     let id = localStorage.getItem('fiches_visitor_id');
     if (!id) {
@@ -16,7 +17,7 @@
     }
     return id;
   }
-  const VISITOR_ID = getVisitorId();
+  let VISITOR_ID = getVisitorId();
 
   const $ = (id) => document.getElementById(id);
 
@@ -58,6 +59,17 @@
   const genNiveau = $('gen-niveau');
   const btnGenerate = $('btn-generate');
   const btnGenNew = $('btn-generate-new');
+
+  // ---------- Auth (Google) ----------
+  const GOOGLE_CLIENT_ID = '160926224905-vg5aqskvad6jjolk0t07fmans0gf3g1u.apps.googleusercontent.com';
+  const googleContainer = $('google-signin-container');
+  const userMenu = $('user-menu');
+  const userAvatarBtn = $('user-avatar-btn');
+  const userAvatarImg = $('user-avatar-img');
+  const userDropdown = $('user-dropdown');
+  const userDropdownName = $('user-dropdown-name');
+  const userDropdownEmail = $('user-dropdown-email');
+  const btnLogout = $('btn-logout');
 
   // ---------- Markdown-lite parser ----------
   function escapeHtml(s) {
@@ -377,11 +389,65 @@
     t.addEventListener('click', () => { d = d === 'dark' ? 'light' : 'dark'; r.setAttribute('data-theme', d); paint(); });
   })();
 
+  // ---------- Auth (Google) ----------
+  function showUserMenu(user) {
+    googleContainer.hidden = true;
+    userMenu.hidden = false;
+    userAvatarImg.src = user.picture || '';
+    userAvatarImg.alt = user.name || 'Profil';
+    userDropdownName.textContent = user.name || '';
+    userDropdownEmail.textContent = user.email || '';
+  }
+
+  function showSignInButton() {
+    userMenu.hidden = true;
+    googleContainer.hidden = false;
+  }
+
+  async function handleGoogleCredential(response) {
+    try {
+      const r = await api('POST', '/api/auth/google', { credential: response.credential });
+      VISITOR_ID = r.session_id;
+      localStorage.setItem('fiches_visitor_id', VISITOR_ID);
+      showUserMenu(r.user);
+      // Recharge l'état (abonnement + fiches) avec la nouvelle identité.
+      if (r.subscribed) { await enterApp(r.plan); }
+      else { renderPaywall(); paywall.hidden = false; app.hidden = true; }
+    } catch (e) {
+      alert('Connexion Google impossible : ' + e.message);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('fiches_visitor_id');
+    if (window.google && google.accounts && google.accounts.id) {
+      google.accounts.id.disableAutoSelect();
+    }
+    location.reload();
+  }
+
+  function setupGoogleAuth() {
+    if (!window.google || !google.accounts || !google.accounts.id) return;
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+    });
+    google.accounts.id.renderButton(googleContainer, { theme: 'outline', size: 'medium', shape: 'pill' });
+  }
+
+  userAvatarBtn.addEventListener('click', () => { userDropdown.hidden = !userDropdown.hidden; });
+  document.addEventListener('click', (e) => {
+    if (!userMenu.contains(e.target)) userDropdown.hidden = true;
+  });
+  btnLogout.addEventListener('click', logout);
+
   // ---------- Init ----------
   (async function init() {
+    setupGoogleAuth();
     try {
       const me = await api('GET', '/api/me');
       plans = me.plans || {};
+      if (me.user) { showUserMenu(me.user); } else { showSignInButton(); }
       if (me.subscribed) { await enterApp(me.plan); }
       else { renderPaywall(); paywall.hidden = false; app.hidden = true; }
     } catch (e) {
