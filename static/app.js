@@ -307,6 +307,48 @@
   function prevCard() { if (!cards.length) return; cardIdx = (cardIdx - 1 + cards.length) % cards.length; cardFlipped = false; renderCard(); }
 
   // ---------- Paywall ----------
+  let paypalClientId = null;
+  let paypalSdkLoaded = false;
+
+  async function loadPaypalSdk() {
+    if (paypalSdkLoaded) return;
+    try {
+      const r = await api('GET', '/api/paypal-client-id');
+      paypalClientId = r.client_id;
+    } catch (e) { return; }
+    if (!paypalClientId) return;
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(paypalClientId)}&currency=EUR`;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    paypalSdkLoaded = true;
+  }
+
+  function renderPaypalButtons(plan) {
+    const container = document.getElementById(`paypal-buttons-${plan}`);
+    if (!container || !window.paypal) return;
+    container.innerHTML = '';
+    paypal.Buttons({
+      style: { layout: 'horizontal', height: 40, label: 'pay' },
+      createOrder: async () => {
+        const r = await api('POST', '/api/paypal/create-order', { plan });
+        return r.order_id;
+      },
+      onApprove: async (data) => {
+        try {
+          const r = await api('POST', '/api/paypal/capture-order', { order_id: data.orderID, plan });
+          await enterApp(r.plan);
+        } catch (e) {
+          alert('Paiement reçu, mais activation impossible : ' + e.message);
+        }
+      },
+      onError: () => { alert('Le paiement PayPal a échoué. Réessaie.'); },
+    }).render(container);
+  }
+
   function renderPaywall() {
     const order = ['decouverte', 'pro', 'premium'];
     pricingEl.innerHTML = order.map((key) => {
@@ -317,21 +359,10 @@
         <div class="plan-name">${p.name}</div>
         <div class="plan-price">${p.price}<span class="period"> ${p.period}</span></div>
         <div class="plan-desc">${gens} générations par mois · Fiches illimitées · Mode révision inclus</div>
-        <button class="btn btn-primary plan-cta" data-plan="${key}">S'abonner</button>
+        <div class="paypal-buttons-container" id="paypal-buttons-${key}"></div>
       </div>`;
     }).join('');
-    pricingEl.querySelectorAll('[data-plan]').forEach((b) =>
-      b.addEventListener('click', () => subscribe(b.dataset.plan))
-    );
-  }
-
-  async function subscribe(plan) {
-    try {
-      const r = await api('POST', '/api/subscribe', { plan });
-      await enterApp(r.plan);
-    } catch (e) {
-      alert('Abonnement impossible : ' + e.message);
-    }
+    loadPaypalSdk().then(() => { order.forEach((key) => renderPaypalButtons(key)); });
   }
 
   async function enterApp(plan) {
