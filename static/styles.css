@@ -674,3 +674,136 @@ a, button, input, textarea, select { transition: color var(--transition-interact
   margin-top: 0.75rem;
   min-height: 40px;
 }
+
+/* Corrige un conflit de spécificité CSS : sans cette règle, [hidden] est
+   neutralisé par des règles comme ".paywall { display: flex }" qui ont la
+   même priorité mais s'appliquent après la feuille de style par défaut. */
+.paywall[hidden],
+.app[hidden] {
+  display: none !important;
+}
+
+/* ============================================================
+   Landing : comment ça marche + fonctionnalités
+   ============================================================ */
+.landing-how {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  text-align: left;
+  margin: var(--space-8) 0;
+}
+
+.landing-step {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.landing-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-ink-on-primary, #fff);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: var(--space-2);
+}
+
+.landing-step h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0 0 var(--space-1) 0;
+}
+
+.landing-step p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.landing-features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3) var(--space-6);
+  margin: 0 0 var(--space-8) 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .landing-how { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   Pied de page (mentions légales, CGU, confidentialité)
+   ============================================================ */
+.site-footer {
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  color: var(--color-text-faint);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Pages légales (mentions, CGU, confidentialité)
+   ============================================================ */
+.legal-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-5) var(--space-16);
+  color: var(--color-text);
+}
+
+.legal-page h1 {
+  font-family: var(--font-display);
+  margin-bottom: var(--space-2);
+}
+
+.legal-page .legal-updated {
+  color: var(--color-text-faint);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-8);
+}
+
+.legal-page h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin-top: var(--space-8);
+}
+
+.legal-page p, .legal-page li {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.legal-page a.back-link {
+  display: inline-block;
+  margin-bottom: var(--space-6);
+  color: var(--color-primary);
+  text-decoration: none;
+}
