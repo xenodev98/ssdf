@@ -28,6 +28,7 @@ GOOGLE_CLIENT_ID = "160926224905-vg5aqskvad6jjolk0t07fmans0gf3g1u.apps.googleuse
 # Emails ayant un accès gratuit à vie (ex. toi-même, comptes de test, proches...).
 FREE_ACCESS_EMAILS = {
     "nfeuillant@gmail.com",
+    "tcaxel87@gmail.com",
 }
 
 # In-memory state keyed by visitor id (anonyme, ou compte Google une fois connecté).
