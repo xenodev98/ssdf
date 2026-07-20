@@ -25,6 +25,11 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 # --- Configuration Google Sign-In ---
 GOOGLE_CLIENT_ID = "160926224905-vg5aqskvad6jjolk0t07fmans0gf3g1u.apps.googleusercontent.com"
 
+# Emails ayant un accès gratuit à vie (ex. toi-même, comptes de test, proches...).
+FREE_ACCESS_EMAILS = {
+    "nfeuillant@gmail.com",
+}
+
 # In-memory state keyed by visitor id (anonyme, ou compte Google une fois connecté).
 SUBSCRIBED: dict[str, str] = {}     # visitor_id -> plan
 FICHES: dict[str, list[dict]] = {}  # visitor_id -> [fiche, ...]
@@ -94,6 +99,9 @@ async def auth_google(request: Request):
         "picture": payload.get("picture") or "",
     }
     FICHES.setdefault(vid, [])
+
+    if USERS[vid]["email"] in FREE_ACCESS_EMAILS:
+        SUBSCRIBED[vid] = "premium"
 
     session_id = "s" + uuid.uuid4().hex
     SESSIONS[session_id] = vid
