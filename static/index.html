@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fiches — Révisions générées par IA</title>
+  <meta name="description" content="Donne un sujet, obtiens une fiche de révision prête. Sur abonnement." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='4' y='3' width='13' height='18' rx='2' fill='%233454d1'/><rect x='7' y='6' width='10' height='18' rx='2' fill='%23f5c518'/></svg>" />
+  <link href="https://api.fontshare.com/v2/css?f[]=boska@400,500,600,700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300..700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ============ PAYWALL ============ -->
+  <div class="paywall" id="paywall" hidden>
+    <div class="paywall-inner">
+      <div class="paywall-brand">
+        <svg class="brand-mark" width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3.5" y="3" width="12" height="18" rx="2.2" fill="var(--color-primary)"/>
+          <rect x="7.5" y="6" width="12" height="18" rx="2.2" fill="var(--color-highlight)"/>
+          <rect x="7.5" y="9" width="7" height="1.4" rx="0.7" fill="var(--color-ink-on-highlight)"/>
+          <rect x="7.5" y="12.2" width="9" height="1.4" rx="0.7" fill="var(--color-ink-on-highlight)"/>
+          <rect x="7.5" y="15.4" width="5.5" height="1.4" rx="0.7" fill="var(--color-ink-on-highlight)"/>
+        </svg>
+        <span class="brand-name">Fiches</span>
+      </div>
+
+      <h1 class="paywall-title">Tes fiches de révision, <span class="accent">générées en 10 secondes.</span></h1>
+      <p class="paywall-sub">Tu donnes un sujet, l'IA crée une fiche structurée : définitions, points clés, et questions d'auto-évaluation. Abonne-toi pour commencer.</p>
+
+      <div class="pricing" id="pricing">
+        <!-- plans injected by JS -->
+      </div>
+
+      <p class="paywall-note">Paiement simulé pour ce prototype · Sans engagement</p>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div class="app" id="app" hidden>
+    <header class="app-header">
+      <div class="brand">
+        <svg class="brand-mark" width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3.5" y="3" width="12" height="18" rx="2.2" fill="var(--color-primary)"/>
+          <rect x="7.5" y="6" width="12" height="18" rx="2.2" fill="var(--color-highlight)"/>
+          <rect x="7.5" y="9" width="7" height="1.4" rx="0.7" fill="var(--color-ink-on-highlight)"/>
+          <rect x="7.5" y="12.2" width="9" height="1.4" rx="0.7" fill="var(--color-ink-on-highlight)"/>
+          <rect x="7.5" y="15.4" width="5.5" height="1.4" rx="0.7" fill="var(--color-ink-on-highlight)"/>
+        </svg>
+        <span class="brand-name">Fiches</span>
+      </div>
+      <div class="header-actions">
+        <span class="plan-badge" id="plan-badge" hidden></span>
+        <button class="btn btn-ghost btn-icon" id="theme-toggle" data-theme-toggle aria-label="Basculer le thème">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <aside class="sidebar" id="sidebar">
+        <button class="btn btn-primary btn-block" id="btn-generate-new">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M3 12h3M18 12h3M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="4"/></svg>
+          Générer une fiche
+        </button>
+        <div class="sidebar-section">
+          <p class="sidebar-label">Mes fiches</p>
+          <ul class="fiche-list" id="fiche-list" role="list"></ul>
+          <p class="empty-state" id="list-empty">Aucune fiche. Génère-en une !</p>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <!-- Generate bar -->
+        <div class="generate-bar" id="generate-bar">
+          <div class="generate-fields">
+            <input type="text" class="gen-input gen-subject" id="gen-subject" placeholder="Sujet de la fiche (ex. La photosynthèse)" />
+            <input type="text" class="gen-input gen-matiere" id="gen-matiere" placeholder="Matière (option)" />
+            <select class="gen-input gen-niveau" id="gen-niveau">
+              <option value="collège">Collège</option>
+              <option value="lycée" selected>Lycée</option>
+              <option value="prépa">Prépa</option>
+              <option value="université">Université</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-generate">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+            <span class="btn-label">Générer</span>
+          </button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="meta-fields">
+            <input type="text" class="fiche-title-input" id="fiche-title" placeholder="Titre de la fiche" />
+            <input type="text" class="fiche-subject-input" id="fiche-subject" placeholder="Matière" />
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-ghost" id="btn-print" title="Imprimer / PDF">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+              <span class="btn-label">Imprimer</span>
+            </button>
+            <button class="btn btn-accent" id="btn-review" title="Mode révision">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span class="btn-label">Réviser</span>
+            </button>
+            <button class="btn btn-danger-ghost" id="btn-delete" title="Supprimer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="editor-pane">
+            <div class="pane-header">
+              <span class="pane-title">Notes</span>
+              <span class="pane-hint"># titre · - puce · Terme : déf. · Question ? Réponse</span>
+            </div>
+            <textarea id="editor" class="editor" placeholder="Le contenu de ta fiche apparaîtra ici après génération. Tu peux aussi l'éditer manuellement."></textarea>
+          </div>
+          <div class="preview-pane" id="preview-pane">
+            <div class="pane-header"><span class="pane-title">Aperçu</span></div>
+            <article class="fiche-card" id="preview"></article>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============ REVIEW MODAL ============ -->
+  <div class="modal" id="review-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="review-title">
+      <div class="modal-head">
+        <h2 id="review-title" class="modal-title">Mode révision</h2>
+        <button class="btn btn-ghost btn-icon" data-close aria-label="Fermer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="review-body" id="review-body"></div>
+      <div class="modal-foot">
+        <span class="review-counter" id="review-counter"></span>
+        <div class="review-controls">
+          <button class="btn btn-ghost" id="review-prev">Précédent</button>
+          <button class="btn btn-primary" id="review-next">Suivant</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
