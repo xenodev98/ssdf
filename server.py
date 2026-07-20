@@ -51,7 +51,103 @@ def visitor_id(x_visitor_id: str | None = Header(default=None, alias="X-Visitor-
     return SESSIONS.get(x_visitor_id, x_visitor_id)
 
 
-# ---------------- Subscription ----------------
+# --- Configuration PayPal ---
+PAYPAL_MODE = os.environ.get("PAYPAL_MODE", "sandbox")  # "sandbox" ou "live"
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "")
+PAYPAL_API_BASE = (
+    "https://api-m.sandbox.paypal.com" if PAYPAL_MODE == "sandbox" else "https://api-m.paypal.com"
+)
+
+
+async def paypal_get_access_token() -> str:
+    if not PAYPAL_CLIENT_ID or not PAYPAL_SECRET:
+        raise HTTPException(status_code=500, detail="PayPal non configuré côté serveur")
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{PAYPAL_API_BASE}/v1/oauth2/token",
+            data={"grant_type": "client_credentials"},
+            auth=(PAYPAL_CLIENT_ID, PAYPAL_SECRET),
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Erreur d'authentification PayPal")
+    return resp.json()["access_token"]
+
+
+@app.get("/api/paypal-client-id")
+def paypal_client_id():
+    return {"client_id": PAYPAL_CLIENT_ID}
+
+
+@app.post("/api/paypal/create-order")
+async def paypal_create_order(request: Request, vid: str = Depends(visitor_id)):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    plan = body.get("plan")
+    if plan not in PLANS:
+        raise HTTPException(status_code=422, detail="Plan invalide")
+
+    amount = PLANS[plan]["price"].replace("€", "").replace(",", ".").strip()
+    token = await paypal_get_access_token()
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{PAYPAL_API_BASE}/v2/checkout/orders",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "intent": "CAPTURE",
+                "purchase_units": [
+                    {
+                        "amount": {"currency_code": "EUR", "value": amount},
+                        "description": f"Abonnement {PLANS[plan]['name']} — Fiches",
+                        "custom_id": plan,
+                    }
+                ],
+            },
+        )
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Erreur création commande PayPal")
+    return {"order_id": resp.json()["id"]}
+
+
+@app.post("/api/paypal/capture-order")
+async def paypal_capture_order(request: Request, vid: str = Depends(visitor_id)):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    order_id = body.get("order_id")
+    plan = body.get("plan")
+    if not order_id or plan not in PLANS:
+        raise HTTPException(status_code=422, detail="Requête invalide")
+
+    token = await paypal_get_access_token()
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{PAYPAL_API_BASE}/v2/checkout/orders/{order_id}/capture",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Erreur lors de la capture du paiement")
+
+    data = resp.json()
+    if data.get("status") != "COMPLETED":
+        raise HTTPException(status_code=402, detail="Paiement non complété")
+
+    # Vérifie que le montant réellement capturé correspond au plan annoncé
+    # (empêche de payer 0,99€ et de se faire passer pour un abonné Premium).
+    try:
+        captured = data["purchase_units"][0]["payments"]["captures"][0]["amount"]["value"]
+    except (KeyError, IndexError):
+        captured = None
+    expected = PLANS[plan]["price"].replace("€", "").replace(",", ".").strip()
+    if captured is None or float(captured) < float(expected) - 0.01:
+        raise HTTPException(status_code=402, detail="Montant payé insuffisant pour ce plan")
+
+    SUBSCRIBED[vid] = plan
+    FICHES.setdefault(vid, [])
+    return {"subscribed": True, "plan": plan}
 @app.get("/api/me")
 def me(vid: str = Depends(visitor_id)):
     plan = SUBSCRIBED.get(vid)
