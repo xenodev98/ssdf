@@ -605,3 +605,67 @@ a, button, input, textarea, select { transition: color var(--transition-interact
 .gen-loading .dots span:nth-child(2){ animation-delay: 0.2s; }
 .gen-loading .dots span:nth-child(3){ animation-delay: 0.4s; }
 @keyframes bounce { 0%,60%,100%{ transform: translateY(0); opacity: 0.4;} 30%{ transform: translateY(-6px); opacity: 1;} }
+
+/* ============================================================
+   Connexion Google (barre flottante)
+   ============================================================ */
+.global-auth-bar {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-avatar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.user-avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.user-dropdown-name {
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.user-dropdown-email {
+  color: var(--color-text-muted);
+  margin: 0 0 0.4rem 0;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
