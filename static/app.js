@@ -7,13 +7,24 @@
   // API sur la même origine (backend et frontend servis par le même service).
   const API = '';
 
+  // Identifiant visiteur : généré une fois, conservé dans le navigateur.
+  function getVisitorId() {
+    let id = localStorage.getItem('fiches_visitor_id');
+    if (!id) {
+      id = 'v' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('fiches_visitor_id', id);
+    }
+    return id;
+  }
+  const VISITOR_ID = getVisitorId();
+
   const $ = (id) => document.getElementById(id);
 
   // ---------- API helpers ----------
   async function api(method, path, body) {
     const res = await fetch(`${API}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Visitor-Id': VISITOR_ID },
       body: body ? JSON.stringify(body) : undefined,
     });
     let data = null;
