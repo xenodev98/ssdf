@@ -22,9 +22,14 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-# In-memory state keyed by visitor id (proxy injects X-Visitor-Id).
+# --- Configuration Google Sign-In ---
+GOOGLE_CLIENT_ID = "160926224905-vg5aqskvad6jjolk0t07fmans0gf3g1u.apps.googleusercontent.com"
+
+# In-memory state keyed by visitor id (anonyme, ou compte Google une fois connecté).
 SUBSCRIBED: dict[str, str] = {}     # visitor_id -> plan
 FICHES: dict[str, list[dict]] = {}  # visitor_id -> [fiche, ...]
+SESSIONS: dict[str, str] = {}       # session_id -> visitor_id canonique ("google:<sub>")
+USERS: dict[str, dict] = {}         # visitor_id canonique -> {name, email, picture}
 
 PLANS = {
     "decouverte": {"name": "Découverte", "price": "0,99 €", "period": "/ mois", "generations": 10},
@@ -36,14 +41,69 @@ PLANS = {
 def visitor_id(x_visitor_id: str | None = Header(default=None, alias="X-Visitor-Id")) -> str:
     if not x_visitor_id:
         raise HTTPException(status_code=400, detail="Identifiant visiteur manquant")
-    return x_visitor_id
+    # Si c'est un identifiant de session (après connexion Google), on résout
+    # vers l'identifiant canonique du compte ; sinon on garde l'id anonyme tel quel.
+    return SESSIONS.get(x_visitor_id, x_visitor_id)
 
 
 # ---------------- Subscription ----------------
 @app.get("/api/me")
 def me(vid: str = Depends(visitor_id)):
     plan = SUBSCRIBED.get(vid)
-    return {"subscribed": bool(plan), "plan": plan, "plans": PLANS}
+    user = USERS.get(vid)
+    return {"subscribed": bool(plan), "plan": plan, "plans": PLANS, "user": user}
+
+
+# ---------------- Connexion avec Google ----------------
+@app.post("/api/auth/google")
+async def auth_google(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=422, detail="JSON invalide")
+    credential = body.get("credential")
+    if not credential:
+        raise HTTPException(status_code=422, detail="Jeton Google manquant")
+
+    # Vérifie le jeton auprès de Google (évite d'accepter un jeton forgé).
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": credential},
+            )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=401, detail="Jeton Google invalide")
+        payload = resp.json()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=502, detail="Impossible de vérifier le jeton Google")
+
+    if payload.get("aud") != GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=401, detail="Jeton Google destiné à une autre application")
+
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Jeton Google incomplet")
+
+    vid = f"google:{sub}"
+    USERS[vid] = {
+        "name": payload.get("name") or payload.get("email") or "Utilisateur",
+        "email": payload.get("email") or "",
+        "picture": payload.get("picture") or "",
+    }
+    FICHES.setdefault(vid, [])
+
+    session_id = "s" + uuid.uuid4().hex
+    SESSIONS[session_id] = vid
+
+    return {
+        "session_id": session_id,
+        "user": USERS[vid],
+        "subscribed": vid in SUBSCRIBED,
+        "plan": SUBSCRIBED.get(vid),
+    }
 
 
 @app.post("/api/subscribe")
